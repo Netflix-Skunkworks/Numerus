@@ -14,7 +14,7 @@ public class NumerusRollingNumberTest {
     public void testCreatesBuckets() {
         MockedTime time = new MockedTime();
         try {
-            NumerusRollingNumber counter = new NumerusRollingNumber(time, 200, 10);
+            NumerusRollingNumber counter = new NumerusRollingNumber(EventType.BOOTSTRAP, time, 200, 10);
             // confirm the initial settings
             assertEquals(200, counter.timeInMilliseconds.get().intValue());
             assertEquals(10, counter.numberOfBuckets.get().intValue());
@@ -25,7 +25,7 @@ public class NumerusRollingNumberTest {
 
             // add a success in each interval which should result in all 10 buckets being created with 1 success in each
             for (int i = 0; i < counter.numberOfBuckets.get(); i++) {
-                counter.increment(NumerusRollingNumberEvent.SUCCESS);
+                counter.increment(EventType.SUCCESS);
                 time.increment(counter.getBucketSizeInMilliseconds());
             }
 
@@ -33,7 +33,7 @@ public class NumerusRollingNumberTest {
             assertEquals(10, counter.buckets.size());
 
             // add 1 more and we should still only have 10 buckets since that's the max
-            counter.increment(NumerusRollingNumberEvent.SUCCESS);
+            counter.increment(EventType.SUCCESS);
             assertEquals(10, counter.buckets.size());
 
         } catch (Exception e) {
@@ -46,13 +46,13 @@ public class NumerusRollingNumberTest {
     public void testResetBuckets() {
         MockedTime time = new MockedTime();
         try {
-            NumerusRollingNumber counter = new NumerusRollingNumber(time, 200, 10);
+            NumerusRollingNumber counter = new NumerusRollingNumber(EventType.BOOTSTRAP, time, 200, 10);
 
             // we start out with 0 buckets in the queue
             assertEquals(0, counter.buckets.size());
 
             // add 1
-            counter.increment(NumerusRollingNumberEvent.SUCCESS);
+            counter.increment(EventType.SUCCESS);
 
             // confirm we have 1 bucket
             assertEquals(1, counter.buckets.size());
@@ -61,7 +61,7 @@ public class NumerusRollingNumberTest {
             assertEquals(1, counter.buckets.size());
 
             // add 1
-            counter.increment(NumerusRollingNumberEvent.SUCCESS);
+            counter.increment(EventType.SUCCESS);
 
             // we should now have a single bucket with no values in it instead of 2 or more buckets
             assertEquals(1, counter.buckets.size());
@@ -76,10 +76,10 @@ public class NumerusRollingNumberTest {
     public void testEmptyBucketsFillIn() {
         MockedTime time = new MockedTime();
         try {
-            NumerusRollingNumber counter = new NumerusRollingNumber(time, 200, 10);
+            NumerusRollingNumber counter = new NumerusRollingNumber(EventType.BOOTSTRAP, time, 200, 10);
 
             // add 1
-            counter.increment(NumerusRollingNumberEvent.SUCCESS);
+            counter.increment(EventType.SUCCESS);
 
             // we should have 1 bucket
             assertEquals(1, counter.buckets.size());
@@ -88,7 +88,7 @@ public class NumerusRollingNumberTest {
             time.increment(counter.getBucketSizeInMilliseconds() * 3);
 
             // add another
-            counter.increment(NumerusRollingNumberEvent.SUCCESS);
+            counter.increment(EventType.SUCCESS);
 
             // we should have 4 (1 + 2 empty + 1 new one) buckets
             assertEquals(4, counter.buckets.size());
@@ -103,24 +103,24 @@ public class NumerusRollingNumberTest {
     public void testIncrementInSingleBucket() {
         MockedTime time = new MockedTime();
         try {
-            NumerusRollingNumber counter = new NumerusRollingNumber(time, 200, 10);
+            NumerusRollingNumber counter = new NumerusRollingNumber(EventType.BOOTSTRAP, time, 200, 10);
 
             // increment
-            counter.increment(NumerusRollingNumberEvent.SUCCESS);
-            counter.increment(NumerusRollingNumberEvent.SUCCESS);
-            counter.increment(NumerusRollingNumberEvent.SUCCESS);
-            counter.increment(NumerusRollingNumberEvent.SUCCESS);
-            counter.increment(NumerusRollingNumberEvent.FAILURE);
-            counter.increment(NumerusRollingNumberEvent.FAILURE);
-            counter.increment(NumerusRollingNumberEvent.TIMEOUT);
+            counter.increment(EventType.SUCCESS);
+            counter.increment(EventType.SUCCESS);
+            counter.increment(EventType.SUCCESS);
+            counter.increment(EventType.SUCCESS);
+            counter.increment(EventType.FAILURE);
+            counter.increment(EventType.FAILURE);
+            counter.increment(EventType.TIMEOUT);
 
             // we should have 1 bucket
             assertEquals(1, counter.buckets.size());
 
             // the count should be 4
-            assertEquals(4, counter.buckets.getLast().getAdder(NumerusRollingNumberEvent.SUCCESS).sum());
-            assertEquals(2, counter.buckets.getLast().getAdder(NumerusRollingNumberEvent.FAILURE).sum());
-            assertEquals(1, counter.buckets.getLast().getAdder(NumerusRollingNumberEvent.TIMEOUT).sum());
+            assertEquals(4, counter.buckets.getLast().getAdder(EventType.SUCCESS).sum());
+            assertEquals(2, counter.buckets.getLast().getAdder(EventType.FAILURE).sum());
+            assertEquals(1, counter.buckets.getLast().getAdder(EventType.TIMEOUT).sum());
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -132,32 +132,32 @@ public class NumerusRollingNumberTest {
     public void testTimeout() {
         MockedTime time = new MockedTime();
         try {
-            NumerusRollingNumber counter = new NumerusRollingNumber(time, 200, 10);
+            NumerusRollingNumber counter = new NumerusRollingNumber(EventType.BOOTSTRAP, time, 200, 10);
 
             // increment
-            counter.increment(NumerusRollingNumberEvent.TIMEOUT);
+            counter.increment(EventType.TIMEOUT);
 
             // we should have 1 bucket
             assertEquals(1, counter.buckets.size());
 
             // the count should be 1
-            assertEquals(1, counter.buckets.getLast().getAdder(NumerusRollingNumberEvent.TIMEOUT).sum());
-            assertEquals(1, counter.getRollingSum(NumerusRollingNumberEvent.TIMEOUT));
+            assertEquals(1, counter.buckets.getLast().getAdder(EventType.TIMEOUT).sum());
+            assertEquals(1, counter.getRollingSum(EventType.TIMEOUT));
 
             // sleep to get to a new bucket
             time.increment(counter.getBucketSizeInMilliseconds() * 3);
 
             // incremenet again in latest bucket
-            counter.increment(NumerusRollingNumberEvent.TIMEOUT);
+            counter.increment(EventType.TIMEOUT);
 
             // we should have 4 buckets
             assertEquals(4, counter.buckets.size());
 
             // the counts of the last bucket
-            assertEquals(1, counter.buckets.getLast().getAdder(NumerusRollingNumberEvent.TIMEOUT).sum());
+            assertEquals(1, counter.buckets.getLast().getAdder(EventType.TIMEOUT).sum());
 
             // the total counts
-            assertEquals(2, counter.getRollingSum(NumerusRollingNumberEvent.TIMEOUT));
+            assertEquals(2, counter.getRollingSum(EventType.TIMEOUT));
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -169,32 +169,32 @@ public class NumerusRollingNumberTest {
     public void testShortCircuited() {
         MockedTime time = new MockedTime();
         try {
-            NumerusRollingNumber counter = new NumerusRollingNumber(time, 200, 10);
+            NumerusRollingNumber counter = new NumerusRollingNumber(EventType.BOOTSTRAP, time, 200, 10);
 
             // increment
-            counter.increment(NumerusRollingNumberEvent.SHORT_CIRCUITED);
+            counter.increment(EventType.SHORT_CIRCUITED);
 
             // we should have 1 bucket
             assertEquals(1, counter.buckets.size());
 
             // the count should be 1
-            assertEquals(1, counter.buckets.getLast().getAdder(NumerusRollingNumberEvent.SHORT_CIRCUITED).sum());
-            assertEquals(1, counter.getRollingSum(NumerusRollingNumberEvent.SHORT_CIRCUITED));
+            assertEquals(1, counter.buckets.getLast().getAdder(EventType.SHORT_CIRCUITED).sum());
+            assertEquals(1, counter.getRollingSum(EventType.SHORT_CIRCUITED));
 
             // sleep to get to a new bucket
             time.increment(counter.getBucketSizeInMilliseconds() * 3);
 
             // incremenet again in latest bucket
-            counter.increment(NumerusRollingNumberEvent.SHORT_CIRCUITED);
+            counter.increment(EventType.SHORT_CIRCUITED);
 
             // we should have 4 buckets
             assertEquals(4, counter.buckets.size());
 
             // the counts of the last bucket
-            assertEquals(1, counter.buckets.getLast().getAdder(NumerusRollingNumberEvent.SHORT_CIRCUITED).sum());
+            assertEquals(1, counter.buckets.getLast().getAdder(EventType.SHORT_CIRCUITED).sum());
 
             // the total counts
-            assertEquals(2, counter.getRollingSum(NumerusRollingNumberEvent.SHORT_CIRCUITED));
+            assertEquals(2, counter.getRollingSum(EventType.SHORT_CIRCUITED));
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -204,28 +204,28 @@ public class NumerusRollingNumberTest {
 
     @Test
     public void testThreadPoolRejection() {
-        testCounterType(NumerusRollingNumberEvent.THREAD_POOL_REJECTED);
+        testCounterType(EventType.THREAD_POOL_REJECTED);
     }
 
     @Test
     public void testFallbackSuccess() {
-        testCounterType(NumerusRollingNumberEvent.FALLBACK_SUCCESS);
+        testCounterType(EventType.FALLBACK_SUCCESS);
     }
 
     @Test
     public void testFallbackFailure() {
-        testCounterType(NumerusRollingNumberEvent.FALLBACK_FAILURE);
+        testCounterType(EventType.FALLBACK_FAILURE);
     }
 
     @Test
     public void testExceptionThrow() {
-        testCounterType(NumerusRollingNumberEvent.EXCEPTION_THROWN);
+        testCounterType(EventType.EXCEPTION_THROWN);
     }
 
-    private void testCounterType(NumerusRollingNumberEvent type) {
+    private void testCounterType(EventType type) {
         MockedTime time = new MockedTime();
         try {
-            NumerusRollingNumber counter = new NumerusRollingNumber(time, 200, 10);
+            NumerusRollingNumber counter = new NumerusRollingNumber(EventType.BOOTSTRAP, time, 200, 10);
 
             // increment
             counter.increment(type);
@@ -262,56 +262,56 @@ public class NumerusRollingNumberTest {
     public void testIncrementInMultipleBuckets() {
         MockedTime time = new MockedTime();
         try {
-            NumerusRollingNumber counter = new NumerusRollingNumber(time, 200, 10);
+            NumerusRollingNumber counter = new NumerusRollingNumber(EventType.BOOTSTRAP, time, 200, 10);
 
             // increment
-            counter.increment(NumerusRollingNumberEvent.SUCCESS);
-            counter.increment(NumerusRollingNumberEvent.SUCCESS);
-            counter.increment(NumerusRollingNumberEvent.SUCCESS);
-            counter.increment(NumerusRollingNumberEvent.SUCCESS);
-            counter.increment(NumerusRollingNumberEvent.FAILURE);
-            counter.increment(NumerusRollingNumberEvent.FAILURE);
-            counter.increment(NumerusRollingNumberEvent.TIMEOUT);
-            counter.increment(NumerusRollingNumberEvent.TIMEOUT);
-            counter.increment(NumerusRollingNumberEvent.SHORT_CIRCUITED);
+            counter.increment(EventType.SUCCESS);
+            counter.increment(EventType.SUCCESS);
+            counter.increment(EventType.SUCCESS);
+            counter.increment(EventType.SUCCESS);
+            counter.increment(EventType.FAILURE);
+            counter.increment(EventType.FAILURE);
+            counter.increment(EventType.TIMEOUT);
+            counter.increment(EventType.TIMEOUT);
+            counter.increment(EventType.SHORT_CIRCUITED);
 
             // sleep to get to a new bucket
             time.increment(counter.getBucketSizeInMilliseconds() * 3);
 
             // increment
-            counter.increment(NumerusRollingNumberEvent.SUCCESS);
-            counter.increment(NumerusRollingNumberEvent.SUCCESS);
-            counter.increment(NumerusRollingNumberEvent.FAILURE);
-            counter.increment(NumerusRollingNumberEvent.FAILURE);
-            counter.increment(NumerusRollingNumberEvent.FAILURE);
-            counter.increment(NumerusRollingNumberEvent.TIMEOUT);
-            counter.increment(NumerusRollingNumberEvent.SHORT_CIRCUITED);
+            counter.increment(EventType.SUCCESS);
+            counter.increment(EventType.SUCCESS);
+            counter.increment(EventType.FAILURE);
+            counter.increment(EventType.FAILURE);
+            counter.increment(EventType.FAILURE);
+            counter.increment(EventType.TIMEOUT);
+            counter.increment(EventType.SHORT_CIRCUITED);
 
             // we should have 4 buckets
             assertEquals(4, counter.buckets.size());
 
             // the counts of the last bucket
-            assertEquals(2, counter.buckets.getLast().getAdder(NumerusRollingNumberEvent.SUCCESS).sum());
-            assertEquals(3, counter.buckets.getLast().getAdder(NumerusRollingNumberEvent.FAILURE).sum());
-            assertEquals(1, counter.buckets.getLast().getAdder(NumerusRollingNumberEvent.TIMEOUT).sum());
-            assertEquals(1, counter.buckets.getLast().getAdder(NumerusRollingNumberEvent.SHORT_CIRCUITED).sum());
+            assertEquals(2, counter.buckets.getLast().getAdder(EventType.SUCCESS).sum());
+            assertEquals(3, counter.buckets.getLast().getAdder(EventType.FAILURE).sum());
+            assertEquals(1, counter.buckets.getLast().getAdder(EventType.TIMEOUT).sum());
+            assertEquals(1, counter.buckets.getLast().getAdder(EventType.SHORT_CIRCUITED).sum());
 
             // the total counts
-            assertEquals(6, counter.getRollingSum(NumerusRollingNumberEvent.SUCCESS));
-            assertEquals(5, counter.getRollingSum(NumerusRollingNumberEvent.FAILURE));
-            assertEquals(3, counter.getRollingSum(NumerusRollingNumberEvent.TIMEOUT));
-            assertEquals(2, counter.getRollingSum(NumerusRollingNumberEvent.SHORT_CIRCUITED));
+            assertEquals(6, counter.getRollingSum(EventType.SUCCESS));
+            assertEquals(5, counter.getRollingSum(EventType.FAILURE));
+            assertEquals(3, counter.getRollingSum(EventType.TIMEOUT));
+            assertEquals(2, counter.getRollingSum(EventType.SHORT_CIRCUITED));
 
             // wait until window passes
             time.increment(counter.timeInMilliseconds.get());
 
             // increment
-            counter.increment(NumerusRollingNumberEvent.SUCCESS);
+            counter.increment(EventType.SUCCESS);
 
             // the total counts should now include only the last bucket after a reset since the window passed
-            assertEquals(1, counter.getRollingSum(NumerusRollingNumberEvent.SUCCESS));
-            assertEquals(0, counter.getRollingSum(NumerusRollingNumberEvent.FAILURE));
-            assertEquals(0, counter.getRollingSum(NumerusRollingNumberEvent.TIMEOUT));
+            assertEquals(1, counter.getRollingSum(EventType.SUCCESS));
+            assertEquals(0, counter.getRollingSum(EventType.FAILURE));
+            assertEquals(0, counter.getRollingSum(EventType.TIMEOUT));
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -323,15 +323,15 @@ public class NumerusRollingNumberTest {
     public void testCounterRetrievalRefreshesBuckets() {
         MockedTime time = new MockedTime();
         try {
-            NumerusRollingNumber counter = new NumerusRollingNumber(time, 200, 10);
+            NumerusRollingNumber counter = new NumerusRollingNumber(EventType.BOOTSTRAP, time, 200, 10);
 
             // increment
-            counter.increment(NumerusRollingNumberEvent.SUCCESS);
-            counter.increment(NumerusRollingNumberEvent.SUCCESS);
-            counter.increment(NumerusRollingNumberEvent.SUCCESS);
-            counter.increment(NumerusRollingNumberEvent.SUCCESS);
-            counter.increment(NumerusRollingNumberEvent.FAILURE);
-            counter.increment(NumerusRollingNumberEvent.FAILURE);
+            counter.increment(EventType.SUCCESS);
+            counter.increment(EventType.SUCCESS);
+            counter.increment(EventType.SUCCESS);
+            counter.increment(EventType.SUCCESS);
+            counter.increment(EventType.FAILURE);
+            counter.increment(EventType.FAILURE);
 
             // sleep to get to a new bucket
             time.increment(counter.getBucketSizeInMilliseconds() * 3);
@@ -340,8 +340,8 @@ public class NumerusRollingNumberTest {
             assertEquals(1, counter.buckets.size());
 
             // the total counts
-            assertEquals(4, counter.getRollingSum(NumerusRollingNumberEvent.SUCCESS));
-            assertEquals(2, counter.getRollingSum(NumerusRollingNumberEvent.FAILURE));
+            assertEquals(4, counter.getRollingSum(EventType.SUCCESS));
+            assertEquals(2, counter.getRollingSum(EventType.FAILURE));
 
             // we should have 4 buckets as the counter 'gets' should have triggered the buckets being created to fill in time
             assertEquals(4, counter.buckets.size());
@@ -350,15 +350,15 @@ public class NumerusRollingNumberTest {
             time.increment(counter.timeInMilliseconds.get());
 
             // the total counts should all be 0 (and the buckets cleared by the get, not only increment)
-            assertEquals(0, counter.getRollingSum(NumerusRollingNumberEvent.SUCCESS));
-            assertEquals(0, counter.getRollingSum(NumerusRollingNumberEvent.FAILURE));
+            assertEquals(0, counter.getRollingSum(EventType.SUCCESS));
+            assertEquals(0, counter.getRollingSum(EventType.FAILURE));
 
             // increment
-            counter.increment(NumerusRollingNumberEvent.SUCCESS);
+            counter.increment(EventType.SUCCESS);
 
             // the total counts should now include only the last bucket after a reset since the window passed
-            assertEquals(1, counter.getRollingSum(NumerusRollingNumberEvent.SUCCESS));
-            assertEquals(0, counter.getRollingSum(NumerusRollingNumberEvent.FAILURE));
+            assertEquals(1, counter.getRollingSum(EventType.SUCCESS));
+            assertEquals(0, counter.getRollingSum(EventType.FAILURE));
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -370,32 +370,32 @@ public class NumerusRollingNumberTest {
     public void testUpdateMax1() {
         MockedTime time = new MockedTime();
         try {
-            NumerusRollingNumber counter = new NumerusRollingNumber(time, 200, 10);
+            NumerusRollingNumber counter = new NumerusRollingNumber(EventType.BOOTSTRAP, time, 200, 10);
 
             // increment
-            counter.updateRollingMax(NumerusRollingNumberEvent.THREAD_MAX_ACTIVE, 10);
+            counter.updateRollingMax(EventType.THREAD_MAX_ACTIVE, 10);
 
             // we should have 1 bucket
             assertEquals(1, counter.buckets.size());
 
             // the count should be 10
-            assertEquals(10, counter.buckets.getLast().getMaxUpdater(NumerusRollingNumberEvent.THREAD_MAX_ACTIVE).max());
-            assertEquals(10, counter.getRollingMaxValue(NumerusRollingNumberEvent.THREAD_MAX_ACTIVE));
+            assertEquals(10, counter.buckets.getLast().getMaxUpdater(EventType.THREAD_MAX_ACTIVE).max());
+            assertEquals(10, counter.getRollingMaxValue(EventType.THREAD_MAX_ACTIVE));
 
             // sleep to get to a new bucket
             time.increment(counter.getBucketSizeInMilliseconds() * 3);
 
             // increment again in latest bucket
-            counter.updateRollingMax(NumerusRollingNumberEvent.THREAD_MAX_ACTIVE, 20);
+            counter.updateRollingMax(EventType.THREAD_MAX_ACTIVE, 20);
 
             // we should have 4 buckets
             assertEquals(4, counter.buckets.size());
 
             // the max
-            assertEquals(20, counter.buckets.getLast().getMaxUpdater(NumerusRollingNumberEvent.THREAD_MAX_ACTIVE).max());
+            assertEquals(20, counter.buckets.getLast().getMaxUpdater(EventType.THREAD_MAX_ACTIVE).max());
 
             // counts per bucket
-            long values[] = counter.getValues(NumerusRollingNumberEvent.THREAD_MAX_ACTIVE);
+            long values[] = counter.getValues(EventType.THREAD_MAX_ACTIVE);
             assertEquals(10, values[0]); // oldest bucket
             assertEquals(0, values[1]);
             assertEquals(0, values[2]);
@@ -411,36 +411,36 @@ public class NumerusRollingNumberTest {
     public void testUpdateMax2() {
         MockedTime time = new MockedTime();
         try {
-            NumerusRollingNumber counter = new NumerusRollingNumber(time, 200, 10);
+            NumerusRollingNumber counter = new NumerusRollingNumber(EventType.BOOTSTRAP, time, 200, 10);
 
             // increment
-            counter.updateRollingMax(NumerusRollingNumberEvent.THREAD_MAX_ACTIVE, 10);
-            counter.updateRollingMax(NumerusRollingNumberEvent.THREAD_MAX_ACTIVE, 30);
-            counter.updateRollingMax(NumerusRollingNumberEvent.THREAD_MAX_ACTIVE, 20);
+            counter.updateRollingMax(EventType.THREAD_MAX_ACTIVE, 10);
+            counter.updateRollingMax(EventType.THREAD_MAX_ACTIVE, 30);
+            counter.updateRollingMax(EventType.THREAD_MAX_ACTIVE, 20);
 
             // we should have 1 bucket
             assertEquals(1, counter.buckets.size());
 
             // the count should be 30
-            assertEquals(30, counter.buckets.getLast().getMaxUpdater(NumerusRollingNumberEvent.THREAD_MAX_ACTIVE).max());
-            assertEquals(30, counter.getRollingMaxValue(NumerusRollingNumberEvent.THREAD_MAX_ACTIVE));
+            assertEquals(30, counter.buckets.getLast().getMaxUpdater(EventType.THREAD_MAX_ACTIVE).max());
+            assertEquals(30, counter.getRollingMaxValue(EventType.THREAD_MAX_ACTIVE));
 
             // sleep to get to a new bucket
             time.increment(counter.getBucketSizeInMilliseconds() * 3);
 
-            counter.updateRollingMax(NumerusRollingNumberEvent.THREAD_MAX_ACTIVE, 30);
-            counter.updateRollingMax(NumerusRollingNumberEvent.THREAD_MAX_ACTIVE, 30);
-            counter.updateRollingMax(NumerusRollingNumberEvent.THREAD_MAX_ACTIVE, 50);
+            counter.updateRollingMax(EventType.THREAD_MAX_ACTIVE, 30);
+            counter.updateRollingMax(EventType.THREAD_MAX_ACTIVE, 30);
+            counter.updateRollingMax(EventType.THREAD_MAX_ACTIVE, 50);
 
             // we should have 4 buckets
             assertEquals(4, counter.buckets.size());
 
             // the count
-            assertEquals(50, counter.buckets.getLast().getMaxUpdater(NumerusRollingNumberEvent.THREAD_MAX_ACTIVE).max());
-            assertEquals(50, counter.getValueOfLatestBucket(NumerusRollingNumberEvent.THREAD_MAX_ACTIVE));
+            assertEquals(50, counter.buckets.getLast().getMaxUpdater(EventType.THREAD_MAX_ACTIVE).max());
+            assertEquals(50, counter.getValueOfLatestBucket(EventType.THREAD_MAX_ACTIVE));
 
             // values per bucket
-            long values[] = counter.getValues(NumerusRollingNumberEvent.THREAD_MAX_ACTIVE);
+            long values[] = counter.getValues(EventType.THREAD_MAX_ACTIVE);
             assertEquals(30, values[0]); // oldest bucket
             assertEquals(0, values[1]);
             assertEquals(0, values[2]);
@@ -456,9 +456,9 @@ public class NumerusRollingNumberTest {
     public void testMaxValue() {
         MockedTime time = new MockedTime();
         try {
-            NumerusRollingNumberEvent type = NumerusRollingNumberEvent.THREAD_MAX_ACTIVE;
+            EventType type = EventType.THREAD_MAX_ACTIVE;
 
-            NumerusRollingNumber counter = new NumerusRollingNumber(time, 200, 10);
+            NumerusRollingNumber counter = new NumerusRollingNumber(EventType.BOOTSTRAP, time, 200, 10);
 
             counter.updateRollingMax(type, 10);
 
@@ -488,32 +488,32 @@ public class NumerusRollingNumberTest {
     @Test
     public void testEmptySum() {
         MockedTime time = new MockedTime();
-        NumerusRollingNumberEvent type = NumerusRollingNumberEvent.COLLAPSED;
-        NumerusRollingNumber counter = new NumerusRollingNumber(time, 200, 10);
+        EventType type = EventType.COLLAPSED;
+        NumerusRollingNumber counter = new NumerusRollingNumber(EventType.BOOTSTRAP, time, 200, 10);
         assertEquals(0, counter.getRollingSum(type));
     }
 
     @Test
     public void testEmptyMax() {
         MockedTime time = new MockedTime();
-        NumerusRollingNumberEvent type = NumerusRollingNumberEvent.THREAD_MAX_ACTIVE;
-        NumerusRollingNumber counter = new NumerusRollingNumber(time, 200, 10);
+        EventType type = EventType.THREAD_MAX_ACTIVE;
+        NumerusRollingNumber counter = new NumerusRollingNumber(EventType.BOOTSTRAP, time, 200, 10);
         assertEquals(0, counter.getRollingMaxValue(type));
     }
 
     @Test
     public void testEmptyLatestValue() {
         MockedTime time = new MockedTime();
-        NumerusRollingNumberEvent type = NumerusRollingNumberEvent.THREAD_MAX_ACTIVE;
-        NumerusRollingNumber counter = new NumerusRollingNumber(time, 200, 10);
+        EventType type = EventType.THREAD_MAX_ACTIVE;
+        NumerusRollingNumber counter = new NumerusRollingNumber(EventType.BOOTSTRAP, time, 200, 10);
         assertEquals(0, counter.getValueOfLatestBucket(type));
     }
 
     @Test
     public void testRolling() {
         MockedTime time = new MockedTime();
-        NumerusRollingNumberEvent type = NumerusRollingNumberEvent.THREAD_MAX_ACTIVE;
-        NumerusRollingNumber counter = new NumerusRollingNumber(time, 20, 2);
+        EventType type = EventType.THREAD_MAX_ACTIVE;
+        NumerusRollingNumber counter = new NumerusRollingNumber(EventType.BOOTSTRAP, time, 20, 2);
         // iterate over 20 buckets on a queue sized for 2
         for (int i = 0; i < 20; i++) {
             // first bucket
@@ -536,8 +536,8 @@ public class NumerusRollingNumberTest {
     @Test
     public void testCumulativeCounterAfterRolling() {
         MockedTime time = new MockedTime();
-        NumerusRollingNumberEvent type = NumerusRollingNumberEvent.SUCCESS;
-        NumerusRollingNumber counter = new NumerusRollingNumber(time, 20, 2);
+        EventType type = EventType.SUCCESS;
+        NumerusRollingNumber counter = new NumerusRollingNumber(EventType.BOOTSTRAP, time, 20, 2);
 
         assertEquals(0, counter.getCumulativeSum(type));
 
@@ -564,8 +564,8 @@ public class NumerusRollingNumberTest {
     @Test
     public void testCumulativeCounterAfterRollingAndReset() {
         MockedTime time = new MockedTime();
-        NumerusRollingNumberEvent type = NumerusRollingNumberEvent.SUCCESS;
-        NumerusRollingNumber counter = new NumerusRollingNumber(time, 20, 2);
+        EventType type = EventType.SUCCESS;
+        NumerusRollingNumber counter = new NumerusRollingNumber(EventType.BOOTSTRAP, time, 20, 2);
 
         assertEquals(0, counter.getCumulativeSum(type));
 
@@ -597,8 +597,8 @@ public class NumerusRollingNumberTest {
     @Test
     public void testCumulativeCounterAfterRollingAndReset2() {
         MockedTime time = new MockedTime();
-        NumerusRollingNumberEvent type = NumerusRollingNumberEvent.SUCCESS;
-        NumerusRollingNumber counter = new NumerusRollingNumber(time, 20, 2);
+        EventType type = EventType.SUCCESS;
+        NumerusRollingNumber counter = new NumerusRollingNumber(EventType.BOOTSTRAP, time, 20, 2);
 
         assertEquals(0, counter.getCumulativeSum(type));
 
@@ -632,8 +632,8 @@ public class NumerusRollingNumberTest {
     @Test
     public void testCumulativeCounterAfterRollingAndReset3() {
         MockedTime time = new MockedTime();
-        NumerusRollingNumberEvent type = NumerusRollingNumberEvent.SUCCESS;
-        NumerusRollingNumber counter = new NumerusRollingNumber(time, 20, 2);
+        EventType type = EventType.SUCCESS;
+        NumerusRollingNumber counter = new NumerusRollingNumber(EventType.BOOTSTRAP, time, 20, 2);
 
         assertEquals(0, counter.getCumulativeSum(type));
 
@@ -671,6 +671,32 @@ public class NumerusRollingNumberTest {
 
         public void increment(int millis) {
             time.addAndGet(millis);
+        }
+
+    }
+
+    public enum EventType implements NumerusRollingNumberEvent {
+        BOOTSTRAP(1), SUCCESS(1), FAILURE(1), TIMEOUT(1), SHORT_CIRCUITED(1), THREAD_POOL_REJECTED(1), SEMAPHORE_REJECTED(1),
+        FALLBACK_SUCCESS(1), FALLBACK_FAILURE(1), FALLBACK_REJECTION(1), EXCEPTION_THROWN(1),
+        THREAD_EXECUTION(1), THREAD_MAX_ACTIVE(2), COLLAPSED(1), RESPONSE_FROM_CACHE(1);
+
+        private final int type;
+
+        EventType(int type) {
+            this.type = type;
+        }
+
+        public boolean isCounter() {
+            return type == 1;
+        }
+
+        public boolean isMaxUpdater() {
+            return type == 2;
+        }
+
+        @Override
+        public EventType[] getValues() {
+            return values();
         }
 
     }

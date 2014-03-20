@@ -28,22 +28,15 @@ package com.netflix.numerus;
  * <p>
  * The MaxUpdater type events can be used with {@link NumerusRollingNumber#updateRollingMax} and {@link NumerusRollingNumber#getRollingMaxValue}.
  */
-public enum NumerusRollingNumberEvent {
-    SUCCESS(1), FAILURE(1), TIMEOUT(1), SHORT_CIRCUITED(1), THREAD_POOL_REJECTED(1), SEMAPHORE_REJECTED(1),
-    FALLBACK_SUCCESS(1), FALLBACK_FAILURE(1), FALLBACK_REJECTION(1), EXCEPTION_THROWN(1),
-    THREAD_EXECUTION(1), THREAD_MAX_ACTIVE(2), COLLAPSED(1), RESPONSE_FROM_CACHE(1);
+public interface NumerusRollingNumberEvent {
 
-    private final int type;
+    public boolean isCounter();
 
-    private NumerusRollingNumberEvent(int type) {
-        this.type = type;
-    }
+    public boolean isMaxUpdater();
 
-    public boolean isCounter() {
-        return type == 1;
-    }
+    public NumerusRollingNumberEvent[] getValues();
 
-    public boolean isMaxUpdater() {
-        return type == 2;
-    }
+    public int ordinal();
+
+    public String name();
 }

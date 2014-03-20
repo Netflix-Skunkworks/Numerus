@@ -46,21 +46,24 @@ public class NumerusRollingNumber {
     final NumerusProperty<Integer> numberOfBuckets;
 
     final BucketCircularArray buckets;
-    private final CumulativeSum cumulativeSum = new CumulativeSum();
+    private final CumulativeSum cumulativeSum;
+    private final NumerusRollingNumberEvent events;
 
-    public NumerusRollingNumber(NumerusProperty<Integer> timeInMilliseconds, NumerusProperty<Integer> numberOfBuckets) {
-        this(ACTUAL_TIME, timeInMilliseconds, numberOfBuckets);
+    public NumerusRollingNumber(NumerusRollingNumberEvent events, NumerusProperty<Integer> timeInMilliseconds, NumerusProperty<Integer> numberOfBuckets) {
+        this(events, ACTUAL_TIME, timeInMilliseconds, numberOfBuckets);
     }
 
     /* used for unit testing */
-    /* package for testing */NumerusRollingNumber(Time time, int timeInMilliseconds, int numberOfBuckets) {
-        this(time, NumerusProperty.Factory.asProperty(timeInMilliseconds), NumerusProperty.Factory.asProperty(numberOfBuckets));
+    /* package for testing */NumerusRollingNumber(NumerusRollingNumberEvent events, Time time, int timeInMilliseconds, int numberOfBuckets) {
+        this(events, time, NumerusProperty.Factory.asProperty(timeInMilliseconds), NumerusProperty.Factory.asProperty(numberOfBuckets));
     }
 
-    private NumerusRollingNumber(Time time, NumerusProperty<Integer> timeInMilliseconds, NumerusProperty<Integer> numberOfBuckets) {
+    private NumerusRollingNumber(NumerusRollingNumberEvent events, Time time, NumerusProperty<Integer> timeInMilliseconds, NumerusProperty<Integer> numberOfBuckets) {
+        this.events = events;
         this.time = time;
         this.timeInMilliseconds = timeInMilliseconds;
         this.numberOfBuckets = numberOfBuckets;
+        this.cumulativeSum = new CumulativeSum(events);
 
         if (timeInMilliseconds.get() % numberOfBuckets.get() != 0) {
             throw new IllegalArgumentException("The timeInMilliseconds must divide equally into numberOfBuckets. For example 1000/10 is ok, 1000/11 is not.");
@@ -283,7 +286,7 @@ public class NumerusRollingNumber {
             try {
                 if (buckets.peekLast() == null) {
                     // the list is empty so create the first bucket
-                    Bucket newBucket = new Bucket(currentTime);
+                    Bucket newBucket = new Bucket(events, currentTime);
                     buckets.addLast(newBucket);
                     return newBucket;
                 } else {
@@ -304,7 +307,7 @@ public class NumerusRollingNumber {
                             return getCurrentBucket();
                         } else { // we're past the window so we need to create a new bucket
                             // create a new bucket and add it as the new 'last'
-                            buckets.addLast(new Bucket(lastBucket.windowStart + getBucketSizeInMilliseconds()));
+                            buckets.addLast(new Bucket(events, lastBucket.windowStart + getBucketSizeInMilliseconds()));
                             // add the lastBucket values to the cumulativeSum
                             cumulativeSum.addBucket(lastBucket);
                         }
@@ -354,7 +357,7 @@ public class NumerusRollingNumber {
         final LongAdder[] adderForCounterType;
         final LongMaxUpdater[] updaterForCounterType;
 
-        Bucket(long startTime) {
+        Bucket(NumerusRollingNumberEvent events, long startTime) {
             this.windowStart = startTime;
 
             /*
@@ -365,15 +368,15 @@ public class NumerusRollingNumber {
              */
 
             // initialize the array of LongAdders
-            adderForCounterType = new LongAdder[NumerusRollingNumberEvent.values().length];
-            for (NumerusRollingNumberEvent type : NumerusRollingNumberEvent.values()) {
+            adderForCounterType = new LongAdder[events.getValues().length];
+            for (NumerusRollingNumberEvent type : events.getValues()) {
                 if (type.isCounter()) {
                     adderForCounterType[type.ordinal()] = new LongAdder();
                 }
             }
 
-            updaterForCounterType = new LongMaxUpdater[NumerusRollingNumberEvent.values().length];
-            for (NumerusRollingNumberEvent type : NumerusRollingNumberEvent.values()) {
+            updaterForCounterType = new LongMaxUpdater[events.getValues().length];
+            for (NumerusRollingNumberEvent type : events.getValues()) {
                 if (type.isMaxUpdater()) {
                     updaterForCounterType[type.ordinal()] = new LongMaxUpdater();
                     // initialize to 0 otherwise it is Long.MIN_VALUE
@@ -414,8 +417,10 @@ public class NumerusRollingNumber {
     /* package */static class CumulativeSum {
         final LongAdder[] adderForCounterType;
         final LongMaxUpdater[] updaterForCounterType;
+        final NumerusRollingNumberEvent event;
 
-        CumulativeSum() {
+        CumulativeSum(NumerusRollingNumberEvent event) {
+            this.event = event;
 
             /*
              * We support both LongAdder and LongMaxUpdater in a bucket but don't want the memory allocation
@@ -425,15 +430,15 @@ public class NumerusRollingNumber {
              */
 
             // initialize the array of LongAdders
-            adderForCounterType = new LongAdder[NumerusRollingNumberEvent.values().length];
-            for (NumerusRollingNumberEvent type : NumerusRollingNumberEvent.values()) {
+            adderForCounterType = new LongAdder[event.getValues().length];
+            for (NumerusRollingNumberEvent type : event.getValues()) {
                 if (type.isCounter()) {
                     adderForCounterType[type.ordinal()] = new LongAdder();
                 }
             }
 
-            updaterForCounterType = new LongMaxUpdater[NumerusRollingNumberEvent.values().length];
-            for (NumerusRollingNumberEvent type : NumerusRollingNumberEvent.values()) {
+            updaterForCounterType = new LongMaxUpdater[event.getValues().length];
+            for (NumerusRollingNumberEvent type : event.getValues()) {
                 if (type.isMaxUpdater()) {
                     updaterForCounterType[type.ordinal()] = new LongMaxUpdater();
                     // initialize to 0 otherwise it is Long.MIN_VALUE
@@ -443,7 +448,7 @@ public class NumerusRollingNumber {
         }
 
         public void addBucket(Bucket lastBucket) {
-            for (NumerusRollingNumberEvent type : NumerusRollingNumberEvent.values()) {
+            for (NumerusRollingNumberEvent type : event.getValues()) {
                 if (type.isCounter()) {
                     getAdder(type).add(lastBucket.getAdder(type).sum());
                 }
