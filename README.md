@@ -5,6 +5,11 @@ Counters, Percentiles, etc for in-memory metrics capture.
 
 This is a utility library that started by extracting code from [Hystrix](https://github.com/Netflix/Hystrix) for use in other projects that don't need Hystrix.
 
+For example:
+
+- [RollingNumber](https://github.com/Netflix/Numerus/blob/master/numerus/src/main/java/com/netflix/numerus/NumerusRollingNumber.java):  a rolling number which can be used to track counters (increment) or set values over time
+- [RollingPercentile](https://github.com/Netflix/Numerus/blob/master/numerus/src/main/java/com/netflix/numerus/NumerusRollingPercentile.java): a rolling window for percentile calculations such as median, 90th, 99th, etc
+
 ## Binaries
 
 Binaries and dependency information for Maven, Ivy, Gradle and others can be found at [http://search.maven.org](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22com.netflix.numerus%22).
