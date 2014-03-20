@@ -1,0 +1,17 @@
+apply plugin: 'osgi'
+
+sourceCompatibility = JavaVersion.VERSION_1_6
+targetCompatibility = JavaVersion.VERSION_1_6
+
+dependencies {
+	testCompile 'junit:junit:4.10'
+}
+
+jar {
+    manifest {
+        name = 'numerus'
+        instruction 'Bundle-Vendor', 'Netflix'
+        instruction 'Bundle-DocURL', 'https://github.com/Netflix/Numerus'
+        instruction 'Import-Package', '!org.junit,!junit.framework,!org.mockito.*,*'
+    }
+}
