@@ -1,12 +1,12 @@
 /**
  * Copyright 2014 Netflix, Inc.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -53,7 +53,7 @@ public class NumerusRollingPercentile {
     /* package for testing */volatile PercentileSnapshot currentPercentileSnapshot = new PercentileSnapshot(0);
 
     /**
-     * 
+     *
      * @param timeInMilliseconds
      *            {@code NumerusProperty<Integer>} for nummber of milliseconds of data that should be tracked
      *            <p>
@@ -76,7 +76,28 @@ public class NumerusRollingPercentile {
 
     }
 
-    /* package for testing */NumerusRollingPercentile(Time time, NumerusProperty<Integer> timeInMilliseconds, NumerusProperty<Integer> numberOfBuckets, NumerusProperty<Integer> bucketDataLength, NumerusProperty<Boolean> enabled) {
+    /**
+     *
+     * @param time
+     *            {@code NumerusRollingPercentile#Time} a pluggable Time implementatation
+     * @param timeInMilliseconds
+     *            {@code NumerusProperty<Integer>} for nummber of milliseconds of data that should be tracked
+     *            <p>
+     *            Example: 60000 for 1 minute
+     * @param numberOfBuckets
+     *            {@code NumerusProperty<Integer>} for number of buckets that the time window should be divided into
+     *            <p>
+     *            Example: 12 for 5 second buckets in a 1 minute window
+     * @param bucketDataLength
+     *            {@code NumerusProperty<Integer>} for number of values stored in each bucket
+     *            <p>
+     *            Example: 1000 to store a max of 1000 values in each 5 second bucket
+     * @param enabled
+     *            {@code NumerusProperty<Boolean>} whether data should be tracked and percentiles calculated.
+     *            <p>
+     *            If 'false' methods will do nothing.
+     */
+    public NumerusRollingPercentile(Time time, NumerusProperty<Integer> timeInMilliseconds, NumerusProperty<Integer> numberOfBuckets, NumerusProperty<Integer> bucketDataLength, NumerusProperty<Boolean> enabled) {
         this.time = time;
         this.timeInMilliseconds = timeInMilliseconds;
         this.numberOfBuckets = numberOfBuckets;
@@ -92,7 +113,7 @@ public class NumerusRollingPercentile {
 
     /**
      * Add value (or values) to current bucket.
-     * 
+     *
      * @param value
      *            Value to be stored in current bucket such as execution latency in milliseconds
      */
@@ -112,7 +133,7 @@ public class NumerusRollingPercentile {
      * For performance reasons it maintains a single snapshot of the sorted values from all buckets that is re-generated each time the bucket rotates.
      * <p>
      * This means that if a bucket is 5000ms, then this method will re-compute a percentile at most once every 5000ms.
-     * 
+     *
      * @param percentile
      *            value such as 99 (99th percentile), 99.5 (99.5th percentile), 50 (median, 50th percentile) to compute and retrieve percentile from rolling buckets.
      * @return int percentile value
@@ -130,7 +151,7 @@ public class NumerusRollingPercentile {
 
     /**
      * This returns the mean (average) of all values in the current snapshot. This is not a percentile but often desired so captured and exposed here.
-     * 
+     *
      * @return mean of all values
      */
     public int getMean() {
@@ -168,7 +189,7 @@ public class NumerusRollingPercentile {
 
         /**
          * Retrieve the latest bucket if the given time is BEFORE the end of the bucket window, otherwise it returns NULL.
-         * 
+         *
          * NOTE: This is thread-safe because it's accessing 'buckets' which is a LinkedBlockingDeque
          */
         Bucket currentBucket = buckets.peekLast();
@@ -185,19 +206,19 @@ public class NumerusRollingPercentile {
          * The following needs to be synchronized/locked even with a synchronized/thread-safe data structure such as LinkedBlockingDeque because
          * the logic involves multiple steps to check existence, create an object then insert the object. The 'check' or 'insertion' themselves
          * are thread-safe by themselves but not the aggregate algorithm, thus we put this entire block of logic inside synchronized.
-         * 
+         *
          * I am using a tryLock if/then (http://download.oracle.com/javase/6/docs/api/java/util/concurrent/locks/Lock.html#tryLock())
          * so that a single thread will get the lock and as soon as one thread gets the lock all others will go the 'else' block
          * and just return the currentBucket until the newBucket is created. This should allow the throughput to be far higher
          * and only slow down 1 thread instead of blocking all of them in each cycle of creating a new bucket based on some testing
          * (and it makes sense that it should as well).
-         * 
+         *
          * This means the timing won't be exact to the millisecond as to what data ends up in a bucket, but that's acceptable.
          * It's not critical to have exact precision to the millisecond, as long as it's rolling, if we can instead reduce the impact synchronization.
-         * 
+         *
          * More importantly though it means that the 'if' block within the lock needs to be careful about what it changes that can still
          * be accessed concurrently in the 'else' block since we're not completely synchronizing access.
-         * 
+         *
          * For example, we can't have a multi-step process to add a bucket, remove a bucket, then update the sum since the 'else' block of code
          * can retrieve the sum while this is all happening. The trade-off is that we don't maintain the rolling sum and let readers just iterate
          * bucket to calculate the sum themselves. This is an example of favoring write-performance instead of read-performance and how the tryLock
@@ -364,7 +385,7 @@ public class NumerusRollingPercentile {
         /**
          * @see <a href="http://en.wikipedia.org/wiki/Percentile">Percentile (Wikipedia)</a>
          * @see <a href="http://cnx.org/content/m10805/latest/">Percentile</a>
-         * 
+         *
          * @param percent
          * @return
          */
@@ -516,11 +537,11 @@ public class NumerusRollingPercentile {
                  * a single thread protected by a tryLock, but there is at least 1 other place (at time of writing this comment)
                  * where reset can be called from (CircuitBreaker.markSuccess after circuit was tripped) so it can
                  * in an edge-case conflict.
-                 * 
+                 *
                  * Instead of trying to determine if someone already successfully called clear() and we should skip
                  * we will have both calls reset the circuit, even if that means losing data added in between the two
                  * depending on thread scheduling.
-                 * 
+                 *
                  * The rare scenario in which that would occur, we'll accept the possible data loss while clearing it
                  * since the code has stated its desire to clear() anyways.
                  */
@@ -589,7 +610,7 @@ public class NumerusRollingPercentile {
 
     }
 
-    /* package for testing */static interface Time {
+    /* visible for testing */public static interface Time {
         public long getCurrentTimeInMillis();
     }
 
