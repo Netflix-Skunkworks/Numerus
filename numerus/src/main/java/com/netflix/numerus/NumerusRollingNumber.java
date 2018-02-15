@@ -101,7 +101,7 @@ public class NumerusRollingNumber {
      *            HystrixRollingNumberEvent defining which counter to increment
      */
     public void increment(NumerusRollingNumberEvent type) {
-        getCurrentBucket(false).getAdder(type).increment();
+        getCurrentBucket().getAdder(type).increment();
     }
 
     /**
@@ -115,7 +115,7 @@ public class NumerusRollingNumber {
      *            long value to be added to the current bucket
      */
     public void add(NumerusRollingNumberEvent type, long value) {
-        getCurrentBucket(false).getAdder(type).add(value);
+        getCurrentBucket().getAdder(type).add(value);
     }
 
     /**
@@ -127,7 +127,7 @@ public class NumerusRollingNumber {
      * @param value
      */
     public void updateRollingMax(NumerusRollingNumberEvent type, long value) {
-        getCurrentBucket(false).getMaxUpdater(type).update(value);
+        getCurrentBucket().getMaxUpdater(type).update(value);
     }
 
     /**
@@ -197,7 +197,7 @@ public class NumerusRollingNumber {
      *         value from the given {@link NumerusRollingNumberEvent} counter type
      */
     public long getRollingSum(NumerusRollingNumberEvent type) {
-        Bucket lastBucket = getCurrentBucket(false);
+        Bucket lastBucket = getCurrentBucket();
         if (lastBucket == null)
             return 0;
 
@@ -219,7 +219,7 @@ public class NumerusRollingNumber {
      *         value from latest bucket for given {@link NumerusRollingNumberEvent} counter type
      */
     public long getValueOfLatestBucket(NumerusRollingNumberEvent type) {
-        Bucket lastBucket = getCurrentBucket(false);
+        Bucket lastBucket = getCurrentBucket();
         if (lastBucket == null)
             return 0;
         // we have bucket data so we'll return the lastBucket
@@ -238,7 +238,7 @@ public class NumerusRollingNumber {
      * @return array of values from each of the rolling buckets for given {@link NumerusRollingNumberEvent} counter type
      */
     public long[] getValues(NumerusRollingNumberEvent type) {
-        Bucket lastBucket = getCurrentBucket(false);
+        Bucket lastBucket = getCurrentBucket();
         if (lastBucket == null)
             return new long[0];
 
@@ -278,6 +278,10 @@ public class NumerusRollingNumber {
     }
 
     private ReentrantLock newBucketLock = new ReentrantLock();
+
+    /* package for testing */Bucket getCurrentBucket() {
+       return getCurrentBucket(false);
+    }
 
     /* package for testing */Bucket getCurrentBucket(Boolean doNotBlock) {
         long currentTime = time.getCurrentTimeInMillis();
