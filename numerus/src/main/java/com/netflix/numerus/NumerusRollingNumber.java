@@ -88,7 +88,7 @@ public class NumerusRollingNumber {
     public void increment(NumerusRollingNumberEvent type, Boolean doNotBlock) {
         Bucket lastBucket = getCurrentBucket(doNotBlock);
         if (lastBucket == null)
-            return 0;
+            return;
         lastBucket.getAdder(type).increment();
     }
 
