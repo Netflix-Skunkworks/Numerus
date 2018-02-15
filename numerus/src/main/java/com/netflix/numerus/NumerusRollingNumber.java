@@ -80,12 +80,28 @@ public class NumerusRollingNumber {
      * Increment the counter in the current bucket by one for the given {@link NumerusRollingNumberEvent} type.
      * <p>
      * The {@link NumerusRollingNumberEvent} must be a "counter" type <code>HystrixRollingNumberEvent.isCounter() == true</code>.
+     *
+     * @param type
+     *            HystrixRollingNumberEvent defining which counter to increment
+     *            Boolean doNotBlock if currentBucket is null
+     */
+    public void increment(NumerusRollingNumberEvent type, Boolean doNotBlock) {
+        Bucket lastBucket = getCurrentBucket(doNotBlock);
+        if (lastBucket == null)
+            return 0;
+        lastBucket.getAdder(type).increment();
+    }
+
+    /**
+     * Increment the counter in the current bucket by one for the given {@link NumerusRollingNumberEvent} type.
+     * <p>
+     * The {@link NumerusRollingNumberEvent} must be a "counter" type <code>HystrixRollingNumberEvent.isCounter() == true</code>.
      * 
      * @param type
      *            HystrixRollingNumberEvent defining which counter to increment
      */
     public void increment(NumerusRollingNumberEvent type) {
-        getCurrentBucket().getAdder(type).increment();
+        getCurrentBucket(false).getAdder(type).increment();
     }
 
     /**
@@ -99,7 +115,7 @@ public class NumerusRollingNumber {
      *            long value to be added to the current bucket
      */
     public void add(NumerusRollingNumberEvent type, long value) {
-        getCurrentBucket().getAdder(type).add(value);
+        getCurrentBucket(false).getAdder(type).add(value);
     }
 
     /**
@@ -111,7 +127,7 @@ public class NumerusRollingNumber {
      * @param value
      */
     public void updateRollingMax(NumerusRollingNumberEvent type, long value) {
-        getCurrentBucket().getMaxUpdater(type).update(value);
+        getCurrentBucket(false).getMaxUpdater(type).update(value);
     }
 
     /**
@@ -151,6 +167,29 @@ public class NumerusRollingNumber {
      * Get the sum of all buckets in the rolling counter for the given {@link NumerusRollingNumberEvent} type.
      * <p>
      * The {@link NumerusRollingNumberEvent} must be a "counter" type <code>HystrixRollingNumberEvent.isCounter() == true</code>.
+     *
+     * @param type
+     *            HystrixRollingNumberEvent defining which counter to retrieve values from
+     *            Boolean doNotBlock if currentBucket is null
+     * @return
+     *         value from the given {@link NumerusRollingNumberEvent} counter type
+     */
+    public long getRollingSum(NumerusRollingNumberEvent type, Boolean doNotBlock) {
+        Bucket lastBucket = getCurrentBucket(doNotBlock);
+        if (lastBucket == null)
+            return 0;
+
+        long sum = 0;
+        for (Bucket b : buckets) {
+            sum += b.getAdder(type).sum();
+        }
+        return sum;
+    }
+
+    /**
+     * Get the sum of all buckets in the rolling counter for the given {@link NumerusRollingNumberEvent} type.
+     * <p>
+     * The {@link NumerusRollingNumberEvent} must be a "counter" type <code>HystrixRollingNumberEvent.isCounter() == true</code>.
      * 
      * @param type
      *            HystrixRollingNumberEvent defining which counter to retrieve values from
@@ -158,7 +197,7 @@ public class NumerusRollingNumber {
      *         value from the given {@link NumerusRollingNumberEvent} counter type
      */
     public long getRollingSum(NumerusRollingNumberEvent type) {
-        Bucket lastBucket = getCurrentBucket();
+        Bucket lastBucket = getCurrentBucket(false);
         if (lastBucket == null)
             return 0;
 
@@ -180,7 +219,7 @@ public class NumerusRollingNumber {
      *         value from latest bucket for given {@link NumerusRollingNumberEvent} counter type
      */
     public long getValueOfLatestBucket(NumerusRollingNumberEvent type) {
-        Bucket lastBucket = getCurrentBucket();
+        Bucket lastBucket = getCurrentBucket(false);
         if (lastBucket == null)
             return 0;
         // we have bucket data so we'll return the lastBucket
@@ -199,7 +238,7 @@ public class NumerusRollingNumber {
      * @return array of values from each of the rolling buckets for given {@link NumerusRollingNumberEvent} counter type
      */
     public long[] getValues(NumerusRollingNumberEvent type) {
-        Bucket lastBucket = getCurrentBucket();
+        Bucket lastBucket = getCurrentBucket(false);
         if (lastBucket == null)
             return new long[0];
 
@@ -240,7 +279,7 @@ public class NumerusRollingNumber {
 
     private ReentrantLock newBucketLock = new ReentrantLock();
 
-    /* package for testing */Bucket getCurrentBucket() {
+    /* package for testing */Bucket getCurrentBucket(Boolean doNotBlock) {
         long currentTime = time.getCurrentTimeInMillis();
 
         /* a shortcut to try and get the most common result of immediately finding the current bucket */
@@ -326,12 +365,16 @@ public class NumerusRollingNumber {
             } else {
                 // the rare scenario where multiple threads raced to create the very first bucket
                 // wait slightly and then use recursion while the other thread finishes creating a bucket
+                if (doNotBlock) {
+                    // caller indicates doNotBlock
+                    return null;
+                }
                 try {
                     Thread.sleep(5);
                 } catch (Exception e) {
                     // ignore
                 }
-                return getCurrentBucket();
+                return getCurrentBucket(false);
             }
         }
     }
